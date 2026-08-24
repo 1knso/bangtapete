@@ -2,8 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BANG! - Rastreador Central</title>
+    <!-- Optimizaciones de viewport para evitar zoom y ajustar escalas -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <title>BANG! - Vidas</title>
+
+    <!-- PWA / WebApp Meta Tags para iOS y Android -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Bang Vidas">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1f140e">
+
+    <!-- Manifiesto integrado para Android -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Bang Vidas","short_name":"Bang","display":"fullscreen","background_color":"#1f140e","theme_color":"#1f140e"}'>
+
     <style>
         :root {
             --bg-color: #1f140e;
@@ -16,21 +29,48 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            /* Evitar selecciones accidentales y menú contextual en móviles */
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
         }
 
-        body {
+        body, html {
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            height: 100vh;
             width: 100vw;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             background-image: radial-gradient(circle at center, #2e1d15 0%, #110a07 100%);
             overflow: hidden;
-            user-select: none;
-            position: relative;
+            /* Evitar efecto rebote al deslizar */
+            overscroll-behavior-y: none;
+            touch-action: none;
+        }
+
+        /* Botón de pantalla completa sutil */
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--accent-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            z-index: 100;
+            transition: background 0.3s;
+        }
+
+        .fullscreen-btn:active {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* Contenedor central para las vidas */
@@ -47,7 +87,6 @@
             gap: 15px;
         }
 
-        /* Estilos de las balas (SVGs) */
         .bullet {
             width: 45px;
             height: 110px;
@@ -82,10 +121,8 @@
             fill: var(--arrow-color);
         }
 
-        /* Posicionamiento en los bordes de la pantalla */
         .guide-character {
             left: 30px;
-            /* Flex direccional para que la flecha apunte hacia la izquierda y quede fuera */
             flex-direction: row-reverse; 
         }
 
@@ -101,21 +138,24 @@
 
         /* Ajuste para pantallas verticales */
         @media (max-aspect-ratio: 1/1) {
-            .guide-character { top: 30px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }
-            .guide-character svg { transform: rotate(90deg); } /* Apunta arriba */
+            .guide-character { top: 40px; left: 50%; transform: translateX(-50%); flex-direction: column-reverse; }
+            .guide-character svg { transform: rotate(90deg); }
             
-            .guide-weapon { bottom: 30px; top: auto; left: 50%; right: auto; transform: translateX(-50%); flex-direction: column; }
-            .guide-weapon svg { transform: rotate(90deg); } /* Apunta abajo */
+            .guide-weapon { bottom: 40px; top: auto; left: 50%; right: auto; transform: translateX(-50%); flex-direction: column; }
+            .guide-weapon svg { transform: rotate(90deg); }
             
-            .guide-equipment { display: none; } /* En vertical se puede simplificar el espacio */
+            .guide-equipment { display: none; }
             
             .bullet { width: 35px; height: 85px; }
+            .fullscreen-btn { top: 10px; right: 10px; font-size: 0.6rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Guías visuales apuntando hacia fuera del móvil -->
+    <!-- Botón para forzar Fullscreen (útil si se abre desde el navegador) -->
+    <button class="fullscreen-btn" id="fs-btn">Pantalla Completa</button>
+
     <div class="guide guide-character">
         <span>Personaje</span>
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -137,17 +177,18 @@
         </svg>
     </div>
 
-    <!-- Rastreador central -->
     <div class="health-tracker">
         <div class="bullets-container" id="bullets-container">
-            <!-- Balas inyectadas por JS -->
+            <!-- Inyectado por JS -->
         </div>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            // -- Lógica de las Balas --
             const MAX_LIVES = 5;
             const container = document.getElementById('bullets-container');
+            const fragment = document.createDocumentFragment();
 
             const bulletSVG = `
                 <svg viewBox="0 0 40 100" xmlns="http://www.w3.org/2000/svg" class="bullet">
@@ -172,9 +213,6 @@
                 </svg>
             `;
 
-            // Construcción del DOM optimizada
-            const fragment = document.createDocumentFragment();
-
             for (let i = 0; i < MAX_LIVES; i++) {
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = bulletSVG.trim();
@@ -186,8 +224,34 @@
 
                 fragment.appendChild(bulletNode);
             }
-
             container.appendChild(fragment);
+
+            // -- Lógica de Pantalla Completa --
+            const fsBtn = document.getElementById('fs-btn');
+            
+            // Ocultar botón si ya estamos en modo "standalone" (app instalada)
+            if (window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches) {
+                fsBtn.style.display = 'none';
+            }
+
+            fsBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.warn(`No se pudo activar pantalla completa: ${err.message}`);
+                    });
+                    fsBtn.textContent = 'Salir';
+                } else {
+                    document.exitFullscreen();
+                    fsBtn.textContent = 'Pantalla Completa';
+                }
+            });
+
+            // Prevenir comportamiento por defecto de gestos multitáctiles y scroll
+            document.addEventListener('touchmove', function (event) {
+                if (event.scale !== 1) {
+                    event.preventDefault();
+                }
+            }, { passive: false });
         });
     </script>
 </body>
