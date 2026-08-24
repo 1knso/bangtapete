@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tapete BANG! - Rastreador de Vidas</title>
+    <style>
+        :root {
+            /* Paleta de colores Western / Saloon */
+            --bg-color: #2c1e16;
+            --slot-bg: rgba(0, 0, 0, 0.4);
+            --slot-border: #6d4c41;
+            --text-color: #d7ccc8;
+            --accent-color: #bcaaa4;
+            --bullet-active-opacity: 1;
+            --bullet-spent-opacity: 0.3;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Textura sutil de fondo */
+            background-image: radial-gradient(circle at center, #3e2723 0%, #1a100c 100%);
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .mat-container {
+            display: flex;
+            flex-direction: column;
+            width: 95vw;
+            height: 95vh;
+            max-width: 1200px;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .top-row {
+            display: flex;
+            flex: 2;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .bottom-row {
+            display: flex;
+            flex: 1;
+        }
+
+        /* Zonas de las cartas */
+        .card-slot {
+            background-color: var(--slot-bg);
+            border: 2px dashed var(--slot-border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 15px;
+            flex: 1;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            transition: border-color 0.3s;
+        }
+
+        .card-slot h2 {
+            font-size: 1.2rem;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        .card-slot p {
+            font-size: 0.9rem;
+            opacity: 0.5;
+            margin-top: 8px;
+        }
+
+        /* Zona central de vidas */
+        .health-tracker {
+            flex: 1.5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .bullets-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        /* Estilos de las balas (SVGs) */
+        .bullet {
+            width: 40px;
+            height: 100px;
+            cursor: pointer;
+            opacity: var(--bullet-active-opacity);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease, filter 0.4s ease;
+            filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));
+        }
+
+        /* Estado de vida perdida (Girada) */
+        .bullet.spent {
+            transform: rotate(180deg) translateY(-10px);
+            opacity: var(--bullet-spent-opacity);
+            filter: drop-shadow(0px -2px 3px rgba(0,0,0,0.8)) grayscale(0.8);
+        }
+
+        /* Media queries para móviles en vertical */
+        @media (max-aspect-ratio: 1/1) {
+            .top-row {
+                flex-direction: column;
+            }
+            .health-tracker {
+                order: -1; /* Pone las vidas arriba en pantallas verticales */
+                padding: 10px 0;
+            }
+            .bullet {
+                width: 30px;
+                height: 75px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mat-container">
+        <!-- Fila superior: Personaje, Vidas, Arma -->
+        <div class="top-row">
+            <div class="card-slot">
+                <h2>Personaje</h2>
+                <p>Coloca aquí tu carta</p>
+            </div>
+            
+            <div class="card-slot health-tracker">
+                <h2>Vidas</h2>
+                <div class="bullets-container" id="bullets-container">
+                    <!-- Las balas SVG se inyectan mediante JavaScript por coherencia y para no repetir código -->
+                </div>
+            </div>
+
+            <div class="card-slot">
+                <h2>Arma</h2>
+                <p>Coloca aquí tu arma actual</p>
+            </div>
+        </div>
+
+        <!-- Fila inferior: Cartas azules / Equipables -->
+        <div class="bottom-row">
+            <div class="card-slot">
+                <h2>Equipables</h2>
+                <p>↓↓ Coloca tus cartas azules (Mustang, Barril, etc.) aquí abajo ↓↓</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Lógica de la WebApp
+         * Mantenemos un código limpio, modular y sin dependencias.
+         */
+        document.addEventListener("DOMContentLoaded", () => {
+            const MAX_LIVES = 5;
+            const container = document.getElementById('bullets-container');
+
+            // SVG de la bala diseñado para ser profesional y no depender de emojis
+            const bulletSVG = `
+                <svg viewBox="0 0 40 100" xmlns="http://www.w3.org/2000/svg" class="bullet">
+                    <defs>
+                        <!-- Gradiente metálico del casquillo -->
+                        <linearGradient id="casingGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#9c7722"/>
+                            <stop offset="30%" stop-color="#e8c25f"/>
+                            <stop offset="50%" stop-color="#fced9d"/>
+                            <stop offset="70%" stop-color="#d4a331"/>
+                            <stop offset="100%" stop-color="#7a5b13"/>
+                        </linearGradient>
+                        <!-- Gradiente metálico de la punta (plomo/plata) -->
+                        <linearGradient id="tipGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#595959"/>
+                            <stop offset="40%" stop-color="#a6a6a6"/>
+                            <stop offset="100%" stop-color="#404040"/>
+                        </linearGradient>
+                    </defs>
+                    
+                    <!-- Punta de la bala -->
+                    <path d="M 10 30 C 10 5, 17 0, 20 0 C 23 0, 30 5, 30 30 Z" fill="url(#tipGrad)" />
+                    <!-- Cuerpo del casquillo -->
+                    <rect x="10" y="30" width="20" height="62" fill="url(#casingGrad)" />
+                    <!-- Base (reborde del casquillo) -->
+                    <rect x="8" y="92" width="24" height="6" rx="2" fill="url(#casingGrad)" />
+                    <!-- Hendidura de la base -->
+                    <rect x="10" y="89" width="20" height="3" fill="#362809" />
+                </svg>
+            `;
+
+            // Generamos las 5 balas
+            for (let i = 0; i < MAX_LIVES; i++) {
+                // Usamos un div temporal para convertir el string SVG en nodos DOM
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = bulletSVG.trim();
+                const bulletNode = tempDiv.firstChild;
+                
+                // Evento para voltear la bala al pulsarla
+                bulletNode.addEventListener('click', function() {
+                    this.classList.toggle('spent');
+                });
+
+                container.appendChild(bulletNode);
+            }
+        });
+    </script>
+</body>
+</html>
